@@ -1,0 +1,202 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{antigoti}
+\RequirePackage{expl3}
+\ExplSyntaxOn
+
+\tl_new:N \l__antigoti_font_kana_tl
+\tl_new:N \l__antigoti_font_kanji_tl
+\tl_new:N \l__antigoti_font_latin_tl
+\tl_new:N \l__antigoti_font_other_tl
+
+\tl_new:N \l__antigoti_color_kana_tl
+\tl_new:N \l__antigoti_color_kanji_tl
+\tl_new:N \l__antigoti_color_latin_tl
+\tl_new:N \l__antigoti_color_other_tl
+
+\bool_new:N \l__antigoti_bfseries_bool
+
+\tl_new:N \l__antigoti_bfseries_tl
+
+\keys_define:nn { antigoti-font }
+{
+    kana  .tl_set:N = \l__antigoti_font_kana_tl,
+    kanji .tl_set:N = \l__antigoti_font_kanji_tl,
+    latin .tl_set:N = \l__antigoti_font_latin_tl,
+    other .tl_set:N = \l__antigoti_font_other_tl,
+}
+
+\keys_define:nn { antigoti-color }
+{
+    kana  .code:n = \tl_set:Nn \l__antigoti_color_kana_tl { \color_fill:n { #1 } },
+    kanji .code:n = \tl_set:Nn \l__antigoti_color_kanji_tl { \color_fill:n { #1 } },
+    latin .code:n = \tl_set:Nn \l__antigoti_color_latin_tl { \color_fill:n { #1 } },
+    other .code:n = \tl_set:Nn \l__antigoti_color_other_tl { \color_fill:n { #1 } },
+}
+
+\keys_define:nn { antigoti }
+{
+    font .code:n =
+        {
+            \keys_set:nn { antigoti-font } { #1 }
+        },
+    color .code:n =
+        {
+            \keys_set:nn { antigoti-color } { #1 }
+        },
+    bf .bool_set:N = \l__antigoti_bfseries_bool,
+    bf .default:n = { true },
+}
+
+\keys_set:nn { antigoti }
+{
+    font =
+    {
+        kana  = { \mcfamily\l__antigoti_bfseries_tl },
+        kanji = { \gtfamily\l__antigoti_bfseries_tl },
+        latin = { \sffamily\l__antigoti_bfseries_tl },
+        other = { \l__antigoti_bfseries_tl },
+    }
+}
+
+\ProcessKeyOptions[ antigoti ]
+
+\bool_if:NT \l__antigoti_bfseries_bool
+{
+    \tl_set:Nn \l__antigoti_bfseries_tl { \bfseries }
+}
+{
+    \tl_set:Nn \l__antigoti_bfseries_tl {}
+}
+
+\tl_new:N \l__antigoti_text_input_tl
+\int_new:N \l__antigoti_input_tl_int
+\tl_new:N \l__antigoti_kana_tl
+\tl_new:N \l__antigoti_kanji_tl
+\tl_new:N \l__antigoti_latin_tl
+\tl_new:N \l__antigoti_other_tl
+\tl_new:N \l__antigoti_text_output_tl
+
+\bool_new:N \l__kana_bool
+\bool_new:N \l__kanji_bool
+\bool_new:N \l__latin_bool
+\bool_new:N \l__other_bool
+
+\cs_new:Npn \__antigoti_type_end_condition:n #1 {
+    \bool_if:cT { l__ #1 _bool }
+    {
+        \tl_put_right:Nn \l_tmpb_tl { \endgroup }
+        \tl_put_right:NV \l__antigoti_text_output_tl { \l_tmpb_tl }
+        \bool_set_false:c { l__ #1 _bool }
+    }
+}
+
+\prg_generate_conditional_variant:Nnn \tl_put_right:cn {cV} {}
+\prg_generate_conditional_variant:Nnn \tl_put_right:cn {cc} {}
+
+\cs_new:Npn \__antigoti_set_each_category:nnn #1#2#3 {
+    \bool_if:cF { l__ #1 _bool }
+    {
+        \__antigoti_type_end_condition:n { kana }
+        \__antigoti_type_end_condition:n { kanji }
+        \__antigoti_type_end_condition:n { latin }
+        \tl_clear:c { l__antigoti_ #1 _tl }
+        \tl_set:cn { l__antigoti_ #1 _tl } { \begingroup }
+        \tl_put_right:cV { l__antigoti_ #1 _tl } #2
+        \tl_put_right:cV { l__antigoti_ #1 _tl } #3
+        \bool_set_true:c { l__ #1 _bool }
+    }
+    \bool_if:cT { l__ #1 _bool }
+    {
+        \tl_put_right:cV { l__antigoti_ #1 _tl } { \l_tmpa_tl }
+    }
+}
+
+\regex_new:N \l__antigoti_kana_regex
+\regex_new:N \l__antigoti_kanji_regex
+\regex_new:N \l__antigoti_latin_regex
+
+% [\x{3040}-\x{309F}] %% ひらがな
+% [\x{30A0}-\x{30FF}] %% カタカナ
+% [\x{FF61}-\x{FF9F}] %% 半角カタカナ
+
+\regex_set:Nn \l__antigoti_kana_regex  { [\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{FF61}-\x{FF9F}？！、。；：（）] }
+\regex_set:Nn \l__antigoti_kanji_regex { [\x{2E80}-\x{2FDF}々〇〻\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}\x{20000}-\x{3FFFF}] }
+\regex_set:Nn \l__antigoti_latin_regex { [a-zA-Z0-9?!().,] }
+
+%% https://tex.stackexchange.com/questions/645580/help-with-regex-match-case
+\prg_generate_conditional_variant:Nnn \regex_match_case:nn {nV} {T,F,TF}
+
+\int_set:Nn \l_tmpa_int { 0 }
+
+\cs_new:Npn \__antigoti_set:n #1 {
+    \tl_set:Nn \l__antigoti_text_input_tl { #1 }
+    \int_set:Nn \l__antigoti_input_tl_int { \tl_count:N \l__antigoti_text_input_tl }
+    \int_do_until:nn { \l_tmpa_int = \l__antigoti_input_tl_int }
+    {
+        \int_incr:N \l_tmpa_int
+        \tl_set:Nf \l_tmpa_tl { \tl_range:Nnn \l__antigoti_text_input_tl { \int_use:N \l_tmpa_int } { \int_use:N \l_tmpa_int } }
+        %% この関数ってあるの？ \str_count:e
+        \int_compare:nTF { \str_count:e { \tl_to_str:N \l_tmpa_tl } == 1 }
+        {
+            \regex_match_case:nVTF
+            {
+                %% ひらがな・カタカナ
+                { \l__antigoti_kana_regex }  { \__antigoti_set_each_category:nnn { kana }  { \l__antigoti_font_kana_tl } { \l__antigoti_color_kana_tl } }
+                %% 漢字
+                { \l__antigoti_kanji_regex } { \__antigoti_set_each_category:nnn { kanji } { \l__antigoti_font_kanji_tl } { \l__antigoti_color_kanji_tl } }
+                %% ラテン文字・アラビア数字
+                { \l__antigoti_latin_regex } { \__antigoti_set_each_category:nnn { latin } { \l__antigoti_font_latin_tl } { \l__antigoti_color_latin_tl } }
+            }
+            { \l_tmpa_tl }
+            {
+                \bool_if:nT { \l__kana_bool }
+                    { \tl_set_eq:NN \l_tmpb_tl \l__antigoti_kana_tl }
+                \bool_if:nT { \l__kanji_bool }
+                    { \tl_set_eq:NN \l_tmpb_tl \l__antigoti_kanji_tl }
+                \bool_if:nT { \l__latin_bool }
+                    { \tl_set_eq:NN \l_tmpb_tl \l__antigoti_latin_tl }
+            }
+            {
+                \__antigoti_type_end_condition:n { kana }
+                \__antigoti_type_end_condition:n { kanji }
+                \__antigoti_type_end_condition:n { latin }
+                \tl_put_right:NV \l__antigoti_text_output_tl { \l_tmpa_tl }
+            }
+        }
+        {
+            \__antigoti_type_end_condition:n { kana }
+            \__antigoti_type_end_condition:n { kanji }
+            \__antigoti_type_end_condition:n { latin }
+            \tl_put_right:Nn \l__antigoti_text_output_tl { \begingroup }
+            \tl_put_right:NV \l__antigoti_text_output_tl { \l__antigoti_font_other_tl }
+            \tl_put_right:NV \l__antigoti_text_output_tl { \l__antigoti_bfseries_tl }
+            \tl_put_right:NV \l__antigoti_text_output_tl { \l__antigoti_color_other_tl }
+            \tl_put_right:NV \l__antigoti_text_output_tl { \l_tmpa_tl }
+            \tl_put_right:Nn \l__antigoti_text_output_tl { \endgroup }
+        }
+        \tl_clear:N \l_tmpa_tl
+        %%
+        % \tl_log:N \l_tmpb_tl
+        % \tl_log:N \l__antigoti_text_output_tl
+        % \tl_log:N \l__antigoti_kana_tl
+        % \tl_log:N \l__antigoti_kanji_tl
+        % \tl_log:N \l__antigoti_latin_tl
+    }
+    \bool_if:nT { \l__kana_bool || \l__kanji_bool || \l__latin_bool  }
+    {
+        \__antigoti_type_end_condition:n { kana }
+        \__antigoti_type_end_condition:n { kanji }
+        \__antigoti_type_end_condition:n { latin }
+    }
+    \tl_use:N \l__antigoti_text_output_tl
+    % \tl_to_str:N \l__antigoti_text_output_tl
+}
+
+\NewDocumentCommand{ \antigoti }{ O{} m }{
+    \group_begin:
+    \keys_set:nn { antigoti } { #1 }
+    \__antigoti_set:n { #2 }
+    \group_end:
+}
+
+\ExplSyntaxOff
