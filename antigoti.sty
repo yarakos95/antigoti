@@ -3,6 +3,35 @@
 \RequirePackage{expl3}
 \ExplSyntaxOn
 
+\bool_new:N \l__ptex_uptex_bool
+\bool_new:N \l__luatex_bool
+\sys_if_engine_ptex:T   { \bool_set_true:N \l__ptex_uptex_bool }
+\sys_if_engine_uptex:T  { \bool_set_true:N \l__ptex_uptex_bool }
+\sys_if_engine_luatex:T { \bool_set_true:N \l__luatex_bool }
+
+\regex_new:N \l__antigoti_kana_regex
+\regex_new:N \l__antigoti_kanji_regex
+\regex_new:N \l__antigoti_latin_regex
+
+% [\x{3040}-\x{309F}] %% ひらがな
+% [\x{30A0}-\x{30FF}] %% カタカナ
+% [\x{FF61}-\x{FF9F}] %% 半角カタカナ
+% [\x{E0100}-\x{E01EF}] %% 異体字セレクタ
+
+\bool_if:NT \l__luatex_bool
+{
+    \regex_set:Nn \l__antigoti_kana_regex  { [\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{FF61}-\x{FF9F}\x{3001}-\x{301C}\x{FF01}\x{FF1F}\x{FF08}\x{FF09}\x{FF1A}\x{FF1B}] }
+    \regex_set:Nn \l__antigoti_kanji_regex { [\x{2E80}-\x{2FDF}\x{3005}\x{3007}\x{303B}\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}\x{20000}-\x{3FFFF}\x{E0100}-\x{E01EF}] }
+    \regex_set:Nn \l__antigoti_latin_regex { [\x{0030}-\x{0039}\x{0041}-\x{005A}\x{0061}-\x{007A}\x{0021}\x{0028}\x{0089}\x{002C}\x{002E}\x{003A}\x{003B}\x{003F}] }
+}
+
+\bool_if:NT \l__ptex_uptex_bool
+{
+    \regex_set:Nn \l__antigoti_kana_regex  { [ぁ-ゟァ-ヿｦ-ﾝ、-〜！？（）；：] }
+    \regex_set:Nn \l__antigoti_kanji_regex { [⺀-⿟々〇〻㐀-䶿一-鿿豈-﫿𠀀-𿿿] }
+    \regex_set:Nn \l__antigoti_latin_regex { [a-zA-Z0-9?!().,:;] }
+}
+
 \tl_new:N \l__antigoti_font_kana_tl
 \tl_new:N \l__antigoti_font_kanji_tl
 \tl_new:N \l__antigoti_font_latin_tl
@@ -125,19 +154,6 @@
     }
     \clist_clear:N \l_tmpb_clist
 }
-
-\regex_new:N \l__antigoti_kana_regex
-\regex_new:N \l__antigoti_kanji_regex
-\regex_new:N \l__antigoti_latin_regex
-
-% [\x{3040}-\x{309F}] %% ひらがな
-% [\x{30A0}-\x{30FF}] %% カタカナ
-% [\x{FF61}-\x{FF9F}] %% 半角カタカナ
-% [\x{E0100}-\x{E01EF}] %% 異体字セレクタ
-
-\regex_set:Nn \l__antigoti_kana_regex  { [\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{FF61}-\x{FF9F}？！、。；：（）] }
-\regex_set:Nn \l__antigoti_kanji_regex { [\x{2E80}-\x{2FDF}々〇〻\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}\x{20000}-\x{3FFFF}\x{E0100}-\x{E01EF}] }
-\regex_set:Nn \l__antigoti_latin_regex { [a-zA-Z0-9?!().,:;] }
 
 \cs_new:Npn \__antigoti_regex_branch:N #1 {
     \regex_match_case:nVTF
